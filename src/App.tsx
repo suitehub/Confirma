@@ -707,7 +707,7 @@ export default function App() {
         {/* LOGO AREA */}
         <div className="flex h-16 items-center justify-between border-b border-brand-border px-5 shrink-0">
           <div className="flex items-center gap-2.5">
-            <img src="/logo.png" alt="Confirma" className="h-8 w-auto object-contain" />
+            <img src="./logo.png" alt="Confirma" className="h-8 w-auto object-contain" />
             <span className="text-[9px] font-black text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded-sm uppercase tracking-wider">
               PRÓ
             </span>

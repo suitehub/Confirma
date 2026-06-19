@@ -256,7 +256,7 @@ export default function AuthGate({ onAuthenticated, onLogout }: AuthGateProps) {
                 <span className="text-lg font-black tracking-tight text-[#0F172A]">Confirma</span>
               </div>
 
-              <img src="/logo.png" alt="Confirma" className="h-[44px] object-contain mb-5" />
+              <img src="./logo.png" alt="Confirma" className="h-[44px] object-contain mb-5" />
               
               <h2 className="text-2xl font-black text-brand-text tracking-tight mt-1">
                 {isResetMode 
