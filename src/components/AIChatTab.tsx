@@ -185,12 +185,23 @@ export default function AIChatTab({
       setMessages((prev) => [...prev, aiMessage]);
     } catch (err: any) {
       console.error(err);
+      
+      const isNetworkError = !err.message || 
+        err.message.includes("Failed to fetch") || 
+        err.message.includes("NetworkError") || 
+        err.message.includes("Failed to connect") ||
+        err.message.includes("TypeError");
+
+      const errorMessage = isNetworkError
+        ? "⚠️ O Servidor da IA está acordando!\n\nJá estamos ligando os motores! Por favor, aguarde cerca de 20 a 30 segundos enquanto ele inicializa e envie sua mensagem novamente. Essa inicialização ocorre apenas no primeiro acesso de cada período."
+        : `⚠️ Desculpe, ocorreu um erro ao chamar o Assistente Administrativo: ${err.message || err}. Por favor, verifique se a chave API do Gemini está ativa e configurada corretamente nas variáveis de ambiente do seu servidor backend no Render.`;
+
       setMessages((prev) => [
         ...prev,
         {
           id: crypto.randomUUID(),
           sender: "ai",
-          text: `⚠️ Desculpe, ocorreu um erro ao chamar o Assistente Administrativo: ${err.message || err}. Por favor, verifique se a chave API do Gemini está ativa nas configurações do seu servidor backend no Render.`,
+          text: errorMessage,
           createdAt: new Date()
         }
       ]);
