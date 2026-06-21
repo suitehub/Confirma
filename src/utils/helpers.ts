@@ -88,7 +88,6 @@ export function buildOccurrences(
 ): Occurrence[] {
   const occ: Occurrence[] = [];
   
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
   const end = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 90);
 
   for (const s of sessions) {
@@ -98,9 +97,6 @@ export function buildOccurrences(
     if (s.type === "semanal") {
       const base = parseYmdHm(s.date, s.time);
       let d = new Date(base);
-      while (d < start) {
-        d.setDate(d.getDate() + 7);
-      }
       while (d <= end) {
         occ.push({
           key: `${s.id}__${ymdFromDate(d)}__${hmFromDate(d)}`,
@@ -115,7 +111,7 @@ export function buildOccurrences(
       }
     } else {
       const d = parseYmdHm(s.date, s.time);
-      if (d >= start && d <= end) {
+      if (d <= end) {
         occ.push({
           key: `${s.id}__${ymdFromDate(d)}__${hmFromDate(d)}`,
           sessionId: s.id,

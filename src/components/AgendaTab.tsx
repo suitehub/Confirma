@@ -27,15 +27,25 @@ export default function AgendaTab({
   onSelectPatient,
   onAddSessionAt
 }: AgendaTabProps) {
-  // We keep track of the start of the week shown. Default: Monday of the current week.
+  // We keep track of the start of the week shown. Default: Monday of the current week (or next Monday if today is Sunday).
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
     const d = new Date(today);
     const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+    const diff = d.getDate() - day + (day === 0 ? 1 : 1); // If Sunday, show upcoming week
     const monday = new Date(d.setDate(diff));
     monday.setHours(0, 0, 0, 0);
     return monday;
   });
+
+  // Keep week start in sync if today prop changes
+  React.useEffect(() => {
+    const d = new Date(today);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? 1 : 1);
+    const monday = new Date(d.setDate(diff));
+    monday.setHours(0, 0, 0, 0);
+    setCurrentWeekStart(monday);
+  }, [today]);
 
   // Navigate week forward or backward
   const handlePrevWeek = () => {
@@ -57,7 +67,7 @@ export default function AgendaTab({
   const handleGoToToday = () => {
     const d = new Date(today);
     const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const diff = d.getDate() - day + (day === 0 ? 1 : 1);
     const monday = new Date(d.setDate(diff));
     monday.setHours(0, 0, 0, 0);
     setCurrentWeekStart(monday);

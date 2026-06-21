@@ -127,10 +127,25 @@ export default function App() {
   }, [state]);
 
   // Track today date to generate correct boundaries
-  const today = useMemo(() => {
+  const [today, setToday] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  }, []);
+  });
+
+  // Keep today state updated whenever the active tab changes or the window is focused
+  useEffect(() => {
+    const updateToday = () => {
+      const d = new Date();
+      setToday(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
+    };
+
+    updateToday();
+
+    window.addEventListener("focus", updateToday);
+    return () => {
+      window.removeEventListener("focus", updateToday);
+    };
+  }, [activeTab]);
 
   // Sync to Firestore helper
   const saveToFirestore = async (uid: string, s: AppState) => {
