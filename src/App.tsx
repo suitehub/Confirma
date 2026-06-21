@@ -102,8 +102,29 @@ export default function App() {
   const [editingSession, setEditingSession] = useState<Session | null>(null);
   const [sessionModalInitialDate, setSessionModalInitialDate] = useState<string | undefined>(undefined);
   const [sessionModalInitialTime, setSessionModalInitialTime] = useState<string | undefined>(undefined);
+  const [sessionModalInitialPatientId, setSessionModalInitialPatientId] = useState<string | undefined>(undefined);
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+
+  // Helper to calculate start of the week shown (Monday)
+  const getInitialMonday = (baseDate: Date) => {
+    const d = new Date(baseDate);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? 1 : 1); // If Sunday, show upcoming week
+    const monday = new Date(d.setDate(diff));
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+  };
+
+  const [agendaWeekStart, setAgendaWeekStart] = useState<Date>(() => {
+    const d = new Date();
+    const todayBase = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const day = todayBase.getDay();
+    const diff = todayBase.getDate() - day + (day === 0 ? 1 : 1);
+    const monday = new Date(todayBase.setDate(diff));
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+  });
 
   // Search/Filters state
   const [patientSearchQuery, setPatientSearchQuery] = useState("");
@@ -146,6 +167,11 @@ export default function App() {
       window.removeEventListener("focus", updateToday);
     };
   }, [activeTab]);
+
+  // Keep agenda week start in sync if today shifts
+  useEffect(() => {
+    setAgendaWeekStart(getInitialMonday(today));
+  }, [today]);
 
   // Sync to Firestore helper
   const saveToFirestore = async (uid: string, s: AppState) => {
@@ -383,9 +409,16 @@ export default function App() {
         ...prev,
         sessions: [...prev.sessions, newSession],
       }));
+      // Jump agenda's week start to the scheduled session's date's week start so they see it instantly!
+      if (draft.date) {
+        const [y, m, d] = draft.date.split("-").map(Number);
+        const targetDate = new Date(y, m - 1, d);
+        setAgendaWeekStart(getInitialMonday(targetDate));
+      }
     }
     setIsSessionModalOpen(false);
     setEditingSession(null);
+    setSessionModalInitialPatientId(undefined);
   };
 
   // Delete Session and remove its statuses
@@ -1004,6 +1037,8 @@ export default function App() {
             state={state}
             occurrences={occurrences}
             today={today}
+            currentWeekStart={agendaWeekStart}
+            onCurrentWeekStartChange={setAgendaWeekStart}
             onSelectPatient={(pId) => {
               const matched = state.patients.find((p) => p.id === pId);
               if (matched) {
@@ -1305,6 +1340,7 @@ export default function App() {
             onWaOpen={openWa}
             onScheduleReturn={(pId) => {
               setEditingSession(null);
+              setSessionModalInitialPatientId(pId);
               setIsSessionModalOpen(true);
             }}
           />
@@ -1422,6 +1458,7 @@ export default function App() {
           setEditingSession(null);
           setSessionModalInitialDate(undefined);
           setSessionModalInitialTime(undefined);
+          setSessionModalInitialPatientId(undefined);
         }}
         onSave={handleSaveSession}
         onDelete={handleDeleteSession}
@@ -1429,6 +1466,7 @@ export default function App() {
         patients={state.patients}
         initialDate={sessionModalInitialDate}
         initialTime={sessionModalInitialTime}
+        initialPatientId={sessionModalInitialPatientId}
       />
 
       <PatientModal

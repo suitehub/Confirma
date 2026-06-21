@@ -10,12 +10,14 @@ import {
   AlertCircle 
 } from "lucide-react";
 import { AppState, Occurrence } from "../types";
-import { ymdFromDate, formatLongBR } from "../utils/helpers";
+import { ymdFromDate, formatLongBR, hmFromDate } from "../utils/helpers";
 
 interface AgendaTabProps {
   state: AppState;
   occurrences: Occurrence[];
   today: Date;
+  currentWeekStart: Date;
+  onCurrentWeekStartChange: (d: Date) => void;
   onSelectPatient: (patientId: string) => void;
   onAddSessionAt: (date: string, time: string) => void;
 }
@@ -24,44 +26,23 @@ export default function AgendaTab({
   state,
   occurrences,
   today,
+  currentWeekStart,
+  onCurrentWeekStartChange,
   onSelectPatient,
   onAddSessionAt
 }: AgendaTabProps) {
-  // We keep track of the start of the week shown. Default: Monday of the current week (or next Monday if today is Sunday).
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
-    const d = new Date(today);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? 1 : 1); // If Sunday, show upcoming week
-    const monday = new Date(d.setDate(diff));
-    monday.setHours(0, 0, 0, 0);
-    return monday;
-  });
-
-  // Keep week start in sync if today prop changes
-  React.useEffect(() => {
-    const d = new Date(today);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? 1 : 1);
-    const monday = new Date(d.setDate(diff));
-    monday.setHours(0, 0, 0, 0);
-    setCurrentWeekStart(monday);
-  }, [today]);
 
   // Navigate week forward or backward
   const handlePrevWeek = () => {
-    setCurrentWeekStart((prev) => {
-      const next = new Date(prev);
-      next.setDate(next.getDate() - 7);
-      return next;
-    });
+    const next = new Date(currentWeekStart);
+    next.setDate(next.getDate() - 7);
+    onCurrentWeekStartChange(next);
   };
 
   const handleNextWeek = () => {
-    setCurrentWeekStart((prev) => {
-      const next = new Date(prev);
-      next.setDate(next.getDate() + 7);
-      return next;
-    });
+    const next = new Date(currentWeekStart);
+    next.setDate(next.getDate() + 7);
+    onCurrentWeekStartChange(next);
   };
 
   const handleGoToToday = () => {
@@ -70,7 +51,7 @@ export default function AgendaTab({
     const diff = d.getDate() - day + (day === 0 ? 1 : 1);
     const monday = new Date(d.setDate(diff));
     monday.setHours(0, 0, 0, 0);
-    setCurrentWeekStart(monday);
+    onCurrentWeekStartChange(monday);
   };
 
   // Generate the 6 days of the week (Monday to Saturday)
@@ -95,8 +76,8 @@ export default function AgendaTab({
     const targetYmd = ymdFromDate(day);
     return occurrences.find((o) => {
       if (ymdFromDate(o.when) !== targetYmd) return false;
-      // Compare hours and minutes
-      const oTime = o.when.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      // Compare hours and minutes using the custom reliable helper
+      const oTime = hmFromDate(o.when);
       // Match general hour slot (e.g. "14:00" matches "14:00")
       return oTime === hhmm || oTime.startsWith(hhmm.substring(0, 3));
     });

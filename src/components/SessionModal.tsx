@@ -12,6 +12,7 @@ interface SessionModalProps {
   patients: Patient[];
   initialDate?: string;
   initialTime?: string;
+  initialPatientId?: string;
 }
 
 export default function SessionModal({
@@ -23,6 +24,7 @@ export default function SessionModal({
   patients,
   initialDate,
   initialTime,
+  initialPatientId,
 }: SessionModalProps) {
   const [patientId, setPatientId] = useState("");
   const [type, setType] = useState<'avulsa' | 'semanal'>("avulsa");
@@ -48,7 +50,10 @@ export default function SessionModal({
         setFinancialStatus(editingSession.financialStatus || "Pendente");
       } else {
         // Defaults for new session
-        setPatientId(patients.length > 0 ? patients[0].id : "");
+        const preselected = initialPatientId && patients.some((p) => p.id === initialPatientId) 
+          ? initialPatientId 
+          : (patients.length > 0 ? patients[0].id : "");
+        setPatientId(preselected);
         setType("avulsa");
         setDate(initialDate || ymdFromDate(new Date()));
         setTime(initialTime || "09:00");
@@ -59,7 +64,7 @@ export default function SessionModal({
         setFinancialStatus("Pendente");
       }
     }
-  }, [isOpen, editingSession, patients, initialDate, initialTime]);
+  }, [isOpen, editingSession, patients, initialDate, initialTime, initialPatientId]);
 
   if (!isOpen) return null;
 
