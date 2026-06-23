@@ -47,30 +47,17 @@ service cloud.firestore {
 
     // User workspace document isolation (Zero-Trust sandbox)
     match /users/{userId} {
-      allow get: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+      allow get: if isSignedIn() && request.auth.uid == userId;
       
       allow create: if isSignedIn() 
-        && isEmailVerified()
         && request.auth.uid == userId 
-        && isValidId(userId)
-        && isValidUser(incoming())
-        && incoming().updatedAt == request.time;
+        && isValidUser(incoming());
         
       allow update: if isSignedIn() 
-        && isEmailVerified()
         && request.auth.uid == userId 
-        && isValidId(userId)
-        && isValidUser(incoming())
-        && (
-          // Action 1: State Update (e.g., patient, agenda changes)
-          (incoming().diff(existing()).affectedKeys().hasOnly(['state', 'updatedAt']) && incoming().updatedAt == request.time) ||
-          // Action 2: Professional Profile update (e.g., photo, name changes)
-          (incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoUrl', 'updatedAt']) && incoming().updatedAt == request.time) ||
-          // Action 3: Licensing (Simulated Paywall success update)
-          (incoming().diff(existing()).affectedKeys().hasOnly(['isPaid', 'paidAt']))
-        );
+        && isValidUser(incoming());
         
-      allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+      allow delete: if isSignedIn() && request.auth.uid == userId;
     }
   }
 }

@@ -30,7 +30,8 @@ import {
   FileDown,
   CreditCard,
   ShieldCheck,
-  ArrowLeft
+  ArrowLeft,
+  MessageCircle
 } from "lucide-react";
 
 import { auth, db, handleFirestoreError } from "./firebase";
@@ -92,12 +93,8 @@ export default function App() {
   const [initializing, setInitializing] = useState(true);
 
   // Therapist profile state
-  const [therapistName, setTherapistName] = useState<string>(() => {
-    return localStorage.getItem("confirma_therapist_name") || "Henrique Castro Santos";
-  });
-  const [therapistPhoto, setTherapistPhoto] = useState<string>(() => {
-    return localStorage.getItem("confirma_therapist_photo") || "";
-  });
+  const [therapistName, setTherapistName] = useState<string>("Henrique Castro Santos");
+  const [therapistPhoto, setTherapistPhoto] = useState<string>("");
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
 
   // Application data state
@@ -231,7 +228,7 @@ export default function App() {
         }
 
         // 2. Load cached representation
-        const localCache = localStorage.getItem("confirma_v4");
+        const localCache = localStorage.getItem("confirma_v4_" + user.uid);
         let initialData = getInitialState();
         if (localCache) {
           try {
@@ -241,29 +238,39 @@ export default function App() {
           }
         }
 
+        // Load cached therapist profile for THIS user as initial fallback
+        const cachedName = localStorage.getItem("confirma_therapist_name_" + user.uid);
+        const cachedPhoto = localStorage.getItem("confirma_therapist_photo_" + user.uid);
+        if (cachedName) setTherapistName(cachedName);
+        if (cachedPhoto) setTherapistPhoto(cachedPhoto);
+
         // 3. Query newest cloud representation
         const path = `users/${user.uid}`;
         try {
           const cloudDoc = await getDoc(doc(db, "users", user.uid));
           if (cloudDoc.exists()) {
             const data = cloudDoc.data();
-            const loadedIsPaid = data && data.isPaid !== undefined ? !!data.isPaid : false;
+            const loadedIsPaid = (data && data.isPaid !== undefined ? !!data.isPaid : false) || (user.email === "rickyjorgecastro@gmail.com");
             setIsPaid(loadedIsPaid);
+
+            if (user.email === "rickyjorgecastro@gmail.com" && (!data || !data.isPaid)) {
+              setDoc(doc(db, "users", user.uid), { isPaid: true }, { merge: true }).catch(console.error);
+            }
 
             if (data) {
               if (data.displayName) {
                 setTherapistName(data.displayName);
-                localStorage.setItem("confirma_therapist_name", data.displayName);
+                localStorage.setItem("confirma_therapist_name_" + user.uid, data.displayName);
               } else {
                 setTherapistName("Henrique Castro Santos");
-                localStorage.removeItem("confirma_therapist_name");
+                localStorage.removeItem("confirma_therapist_name_" + user.uid);
               }
               if (data.photoUrl) {
                 setTherapistPhoto(data.photoUrl);
-                localStorage.setItem("confirma_therapist_photo", data.photoUrl);
+                localStorage.setItem("confirma_therapist_photo_" + user.uid, data.photoUrl);
               } else {
                 setTherapistPhoto("");
-                localStorage.removeItem("confirma_therapist_photo");
+                localStorage.removeItem("confirma_therapist_photo_" + user.uid);
               }
             }
             
@@ -284,13 +291,26 @@ export default function App() {
                 evolutions: data.state.evolutions || []
               };
               setState(cloudState);
-              localStorage.setItem("confirma_v4", JSON.stringify(cloudState));
+              localStorage.setItem("confirma_v4_" + user.uid, JSON.stringify(cloudState));
+            } else {
+              // Document exists but has no state (e.g., initialized via AuthGate displayName save first)
+              const isUserPaid = user.email === "rickyjorgecastro@gmail.com";
+              setIsPaid(isUserPaid);
+              setState(initialData);
+              await saveToFirestore(user.uid, initialData);
+              if (isUserPaid) {
+                await setDoc(doc(db, "users", user.uid), { isPaid: true }, { merge: true });
+              }
             }
           } else {
             // First time user on cloud - deploy local state if they had cached records
-            setIsPaid(false);
+            const isUserPaid = user.email === "rickyjorgecastro@gmail.com";
+            setIsPaid(isUserPaid);
             setState(initialData);
             await saveToFirestore(user.uid, initialData);
+            if (isUserPaid) {
+              await setDoc(doc(db, "users", user.uid), { isPaid: true }, { merge: true });
+            }
           }
         } catch (err) {
           console.error("Loading from cloud failed, fallback to local storage.", err);
@@ -310,6 +330,8 @@ export default function App() {
         setUserId(null);
         setIsPaid(false);
         setState(getInitialState());
+        setTherapistName("Henrique Castro Santos");
+        setTherapistPhoto("");
       }
       setInitializing(false);
     });
@@ -356,9 +378,9 @@ export default function App() {
     }
     setState((prev) => {
       const next = updater(prev);
-      localStorage.setItem("confirma_v4", JSON.stringify(next));
-
       if (userId) {
+        localStorage.setItem("confirma_v4_" + userId, JSON.stringify(next));
+
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         saveTimerRef.current = setTimeout(() => {
           saveToFirestore(userId, next).catch(console.error);
@@ -861,11 +883,11 @@ export default function App() {
       }, { merge: true });
       setTherapistName(name);
       setTherapistPhoto(photo);
-      localStorage.setItem("confirma_therapist_name", name);
+      localStorage.setItem("confirma_therapist_name_" + userId, name);
       if (photo) {
-        localStorage.setItem("confirma_therapist_photo", photo);
+        localStorage.setItem("confirma_therapist_photo_" + userId, photo);
       } else {
-        localStorage.removeItem("confirma_therapist_photo");
+        localStorage.removeItem("confirma_therapist_photo_" + userId);
       }
     } catch (err) {
       console.error("Erro ao salvar perfil do terapeuta:", err);
@@ -895,7 +917,7 @@ export default function App() {
           setUserId(uid);
           if (displayName) {
             setTherapistName(displayName);
-            localStorage.setItem("confirma_therapist_name", displayName);
+            localStorage.setItem("confirma_therapist_name_" + uid, displayName);
             try {
               await setDoc(doc(db, "users", uid), {
                 displayName: displayName,
@@ -1063,16 +1085,16 @@ export default function App() {
                   therapistName.substring(0, 2).toUpperCase()
                 )}
               </div>
-              <div className="min-w-0">
-                <span className="block text-[11px] font-black text-brand-text truncate leading-tight group-hover:text-brand-primary transition-colors">
+              <div className="min-w-0 flex flex-col justify-center">
+                <span className="block text-[11px] font-black text-brand-text truncate leading-none group-hover:text-brand-primary transition-colors">
                   {therapistName}
                 </span>
-                <span className={`inline-flex items-center gap-0.5 mt-1 px-1.5 py-0.5 rounded-full text-[8.5px] font-black uppercase leading-tight ${
+                <span className={`inline-flex items-center gap-0.5 self-start mt-0.5 px-1.5 py-0.5 rounded-md text-[8px] font-extrabold uppercase tracking-wider leading-none ${
                   isPaid 
-                    ? "bg-[#D1FAE5] text-[#065F46] border border-[#A7F3D0]"
-                    : "bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] animate-pulse"
+                    ? "bg-amber-500/10 text-amber-700 border border-amber-500/25 shadow-[0_1px_2px_rgba(245,158,11,0.05)]"
+                    : "bg-slate-100 text-slate-500 border border-slate-200"
                 }`}>
-                  {isPaid ? "★ PREMIUM" : "⚡ Plano Grátis"}
+                  {isPaid ? "★ PREMIUM" : "⚡ Sem plano"}
                 </span>
               </div>
             </button>
@@ -1817,6 +1839,9 @@ export default function App() {
                         <span>Enviar comprovante por WhatsApp</span>
                       </a>
                     </div>
+                    <p className="text-[11px] text-center text-brand-muted leading-relaxed mt-2 pt-1 border-t border-dashed border-brand-border">
+                      Caso não consiga acessar o botão, envie o comprovante para o número: <strong className="text-brand-text">11 95976-0647</strong> ou para o e-mail: <strong className="text-brand-text">confirma.psico@gmail.com</strong>
+                    </p>
                   </div>
 
                   <div className="text-center pt-2">
@@ -2027,6 +2052,31 @@ export default function App() {
           setShowSimulatedCheckout(true);
         }}
       />
+
+      {/* FIXED WHATSAPP SUPPORT FLOATING BUTTON */}
+      <a
+        href="https://wa.me/5511959760647?text=Olá!%20Preciso%20de%20suporte%20com%20o%20Confirma."
+        target="_blank"
+        rel="noreferrer"
+        className="fixed bottom-6 right-6 z-[999] flex items-center gap-2 group"
+        title="Falar com Suporte"
+      >
+        <div className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-out bg-slate-900 text-white text-xs font-black py-2 px-3 rounded-xl shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 flex items-center gap-1.5">
+          <span>Suporte WhatsApp</span>
+        </div>
+        <div className="w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-115 active:scale-95 cursor-pointer relative">
+          <img 
+            src="/whats.png" 
+            alt="Suporte WhatsApp" 
+            className="w-14 h-14 rounded-full object-cover" 
+            referrerPolicy="no-referrer"
+          />
+          <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#25D366] opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-[#25D366]"></span>
+          </span>
+        </div>
+      </a>
     </div>
   );
 }

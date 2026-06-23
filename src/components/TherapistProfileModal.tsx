@@ -124,7 +124,7 @@ export default function TherapistProfileModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 animate-in fade-in duration-200 backdrop-blur-xs">
-      <div className="w-full max-w-md overflow-hidden rounded-3xl border border-brand-border bg-white shadow-2xl animate-in zoom-in-95 duration-200">
+      <div className="w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden rounded-3xl border border-brand-border bg-white shadow-2xl animate-in zoom-in-95 duration-200">
         
         {/* Header */}
         <div className="flex items-center justify-between border-b border-brand-border bg-slate-50 px-6 py-4">
@@ -145,7 +145,7 @@ export default function TherapistProfileModal({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 text-left">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 text-left">
           
           {/* Section: Avatar */}
           <div className="flex flex-col items-center space-y-3.5">
@@ -252,7 +252,7 @@ export default function TherapistProfileModal({
                   : "bg-amber-50 text-amber-700 border border-amber-200 animate-pulse"
               }`}>
                 {isPaid ? <ShieldCheck className="h-3 w-3" /> : null}
-                <span>{isPaid ? "Premium Vitalício" : "Plano Grátis"}</span>
+                <span>{isPaid ? "Premium Vitalício" : "Sem plano"}</span>
               </span>
             </div>
 
